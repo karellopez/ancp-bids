@@ -14,4 +14,6 @@ Read more on [readthedocs.io](https://ancpbids.readthedocs.io)
 
 Since v0.5, JSON and TSV file contents are loaded lazily and cached only via weak
 references. This means memory is automatically freed once those objects are no
-longer referenced in your code.
+longer referenced in your code.  Accessing ``myfile.contents`` triggers loading
+the file on demand; pass ``DatasetOptions(load_contents=True)`` to load all
+contents eagerly.

@@ -69,6 +69,8 @@ class DatasetPopulationPlugin(DatasetPlugin):
                 mdfile = MetadataFile()
             mdfile.parent_object_ = folder
             mdfile.update(file)
+            # When ``load_contents`` is False we keep contents unloaded until
+            # the ``contents`` property is accessed (lazy loading).
             if self.options.load_contents:
                 mdfile.contents = mdfile.load_contents()
             folder.files.remove(file)
@@ -87,6 +89,7 @@ class DatasetPopulationPlugin(DatasetPlugin):
                 newfile = TSVFile()
             newfile.parent_object_ = folder
             newfile.update(file)
+            # Defer reading large TSV files unless eager loading was requested
             if self.options.load_contents:
                 newfile.contents = newfile.load_contents()
             folder.files.remove(file)
@@ -264,6 +267,8 @@ class DatasetPopulationPlugin(DatasetPlugin):
         if not file:
             return
         json_object = None
+        # JSON files can be large; only read them immediately if eager loading
+        # was requested via ``DatasetOptions.load_contents``
         if self.options.load_contents:
             json_object = file.load_contents()
         if json_object:

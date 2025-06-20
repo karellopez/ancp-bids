@@ -41,7 +41,9 @@ class DatasetOptions(dict):
     load_contents: bool = False
     """If ``True``, JSON and TSV files are read eagerly when calling
         :func:`load_dataset`.  By default this is ``False`` so file contents are
-        loaded lazily on first access via the ``contents`` attribute."""
+        loaded lazily on first access via the ``contents`` attribute.  Loaded
+        contents are cached only via weak references so memory can be reclaimed
+        when they are no longer used."""
 
 
 def load_dataset(base_dir: str, options: Optional[DatasetOptions] = None):

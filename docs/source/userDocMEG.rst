@@ -277,16 +277,18 @@ Access file contents
 Now we know how to query our data to gather information about the dataset and to locate specific files which we
 will need for our analysis. In order to work with these files in our workflows we have to **access** them.
 
-For accessing the contents of our files we can use the **load_contents()** function. Keep in mind that in order to
-successfully load the contents of the file the **return_type** parameter of the **get()** function should not be
-specified sticking to its default value 'dict'.
+Files expose a ``contents`` property which loads the data lazily on first
+access.  Alternatively you can call ``load_contents()`` explicitly.  The
+``return_type`` parameter of :func:`get` should remain at its default ``'dict'``
+for this to work correctly.
 
-We can then load the contents of the first element of our dictionary to access the file, see the example below:
+We can then load the contents of the first element of our dictionary to access
+the file, see the example below:
 
 .. code-block:: python
 
-    events = layout.get(suffix='events',subject='009',task='deduction')
-    df_events = events[0].load_contents()
+    events = layout.get(suffix='events', subject='009', task='deduction')
+    df_events = events[0].contents
 This way you will be able to load the contents of the metadata and descriptive tabular files.
 @Erdal: für imaging data brauchen wir aber noch bibleotheken die die daten interpretieren können richtig?
 

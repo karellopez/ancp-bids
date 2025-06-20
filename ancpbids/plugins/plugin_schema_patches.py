@@ -394,6 +394,10 @@ class PatchingSchemaPlugin(SchemaPlugin):
 
         import weakref
 
+        # ``weakref`` only works with objects supporting a weak reference slot.
+        # The following thin wrappers allow us to cache list and dict instances
+        # returned by ``load_contents`` via ``weakref.ref`` to enable automatic
+        # cleanup once those objects are no longer referenced anywhere.
         class _RefableList(list):
             __slots__ = ('__weakref__',)
 
@@ -401,11 +405,18 @@ class PatchingSchemaPlugin(SchemaPlugin):
             __slots__ = ('__weakref__',)
 
         def _lazy_contents_getter(self):
+            """Lazily load the file's contents on first access.
+
+            The value is cached using a weak reference so that memory is freed
+            automatically once no reference to the contents exists anymore.
+            """
             contents = self.get('contents')
             if contents is None:
+                # try the weakref cache first
                 ref = getattr(self, '_contents_ref', None)
                 contents = ref() if ref else None
             if contents is None:
+                # fall back to reading from disk
                 try:
                     contents = self.load_contents()
                 except Exception:
@@ -414,10 +425,12 @@ class PatchingSchemaPlugin(SchemaPlugin):
                     contents = _RefableList(contents)
                 elif isinstance(contents, dict) and not isinstance(contents, _RefableDict):
                     contents = _RefableDict(contents)
+                # store weak reference for future accesses
                 self._contents_ref = weakref.ref(contents) if contents is not None else None
             return contents
 
         def _lazy_contents_setter(self, value):
+            """Store file contents and update the weakref cache."""
             if isinstance(value, list) and not isinstance(value, _RefableList):
                 value = _RefableList(value)
             elif isinstance(value, dict) and not isinstance(value, _RefableDict):
@@ -430,6 +443,7 @@ class PatchingSchemaPlugin(SchemaPlugin):
             cls.contents = property(_lazy_contents_getter, _lazy_contents_setter)
 
         def _lazy_ds_descr_getter(self):
+            """Return dataset description loading the JSON file on demand."""
             descr = self.get('dataset_description')
             if descr is None:
                 ref = getattr(self, '_ds_descr_ref', None)
@@ -448,6 +462,7 @@ class PatchingSchemaPlugin(SchemaPlugin):
             return descr
 
         def _lazy_ds_descr_setter(self, value):
+            """Store dataset description and manage weakref cache."""
             if value is not None:
                 self['dataset_description'] = value
                 self._ds_descr_ref = weakref.ref(value)
@@ -456,6 +471,7 @@ class PatchingSchemaPlugin(SchemaPlugin):
                 self._ds_descr_ref = None
 
         def _lazy_deriv_descr_getter(self):
+            """Derivative variant of the lazy dataset description getter."""
             descr = self.get('dataset_description')
             if descr is None:
                 ref = getattr(self, '_ds_descr_ref', None)
