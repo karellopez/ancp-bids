@@ -13,8 +13,11 @@ def read_yaml(file_path: str, **kwargs):
 
 
 def read_json(file_path: str, **kwargs):
-    """Reads a JSON file.  Large files are accessed via ``mmap`` to reduce
-    memory overhead."""
+    """Reads a JSON file used by lazy loading.
+
+    Large files are accessed via ``mmap`` to keep memory usage low when file
+    contents are only needed transiently.
+    """
     import json
     import mmap
     with open(file_path, "r") as stream:

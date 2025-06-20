@@ -19,6 +19,9 @@ i.e. if you added new files to your dataset after loading it, you have to reload
 
 JSON and TSV files are loaded lazily. Their contents are cached via weak
 references and automatically cleared from memory once no reference is held.
+Accessing ``file.contents`` will transparently read the file the first time and
+cache the result.  To force eager loading during dataset creation, pass
+``DatasetOptions(load_contents=True)`` to :func:`load_dataset`.
 
 Validate a BIDS dataset
 -----------------------------
