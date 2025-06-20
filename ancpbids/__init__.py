@@ -35,8 +35,13 @@ class DatasetOptions(dict):
     ignore: Union[bool, List[str]] = False
     """If a .bidsignore file is available at the root, all resources (files/folders) matching the filters
         in that file will not be added to the in-memory graph. Alternatively, a list of fnmatch patterns can be provided.
-        
+
         By default, this option is set to False as it may have a negative performance impact."""
+
+    load_contents: bool = False
+    """If ``True``, JSON and TSV files are read eagerly when calling
+        :func:`load_dataset`.  By default this is ``False`` so file contents are
+        loaded lazily on first access via the ``contents`` attribute."""
 
 
 def load_dataset(base_dir: str, options: Optional[DatasetOptions] = None):

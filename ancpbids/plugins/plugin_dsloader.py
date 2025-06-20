@@ -69,7 +69,8 @@ class DatasetPopulationPlugin(DatasetPlugin):
                 mdfile = MetadataFile()
             mdfile.parent_object_ = folder
             mdfile.update(file)
-            mdfile.contents = mdfile.load_contents()
+            if self.options.load_contents:
+                mdfile.contents = mdfile.load_contents()
             folder.files.remove(file)
             folder.files.append(mdfile)
 
@@ -86,7 +87,8 @@ class DatasetPopulationPlugin(DatasetPlugin):
                 newfile = TSVFile()
             newfile.parent_object_ = folder
             newfile.update(file)
-            newfile.contents = newfile.load_contents()
+            if self.options.load_contents:
+                newfile.contents = newfile.load_contents()
             folder.files.remove(file)
             folder.files.append(newfile)
 
@@ -261,16 +263,17 @@ class DatasetPopulationPlugin(DatasetPlugin):
         file = parent.get_file(file_name)
         if not file:
             return
-        json_object = file.contents if 'contents' in file else file.load_contents()
-        if not json_object:
-            return
-        model_type = member['type']
-        json_file = self._map_object(model_type, json_object)
-        json_file.name = file_name
-        json_file.contents = json_object
-        setattr(parent, member['name'], json_file)
-        parent.remove_file(file_name)
-        json_file.parent_object_ = parent
+        json_object = None
+        if self.options.load_contents:
+            json_object = file.load_contents()
+        if json_object:
+            model_type = member['type']
+            json_file = self._map_object(model_type, json_object)
+            json_file.name = file_name
+            json_file.contents = json_object
+            setattr(parent, member['name'], json_file)
+            parent.remove_file(file_name)
+            json_file.parent_object_ = parent
 
 
 _TYPE_MAPPERS = {name: obj for name, obj in inspect.getmembers(DatasetPopulationPlugin) if

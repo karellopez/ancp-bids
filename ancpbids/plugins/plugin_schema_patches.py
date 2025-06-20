@@ -336,6 +336,26 @@ def get_sidecar_file(artifact, **entities):
     return parent.query(**filters)
 
 
+def _map_object(schema, model_type, json_object):
+    target = model_type()
+    members = schema.get_members(model_type, True)
+    actual_props = json_object.keys()
+    direct_props = list(map(lambda m: (m['name'], m), members))
+    for prop_name, prop in direct_props:
+        if prop_name in actual_props:
+            value_type = prop['type']
+            value = json_object[prop_name]
+            if isinstance(value, list) and len(value) > 0:
+                value = [
+                    _map_object(schema, value_type, o) if isinstance(o, dict) else o
+                    for o in value
+                ]
+            elif isinstance(value, dict):
+                value = _map_object(schema, value_type, value)
+            setattr(target, prop_name, value)
+    return target
+
+
 class PatchingSchemaPlugin(SchemaPlugin):
     def execute(self, schema):
         schema.Model.get_schema = get_schema
@@ -370,6 +390,64 @@ class PatchingSchemaPlugin(SchemaPlugin):
         schema.Model.to_generator = to_generator
         schema.Model.to_dict = to_dict
         schema.Model.iterancestors = iterancestors
+
+        def _lazy_contents_getter(self):
+            contents = self.get('contents')
+            if contents is None:
+                try:
+                    contents = self.load_contents()
+                except Exception:
+                    contents = None
+                self['contents'] = contents
+            return contents
+
+        def _lazy_contents_setter(self, value):
+            self['contents'] = value
+
+        for cls in (schema.JsonFile, schema.MetadataFile,
+                     schema.TSVFile, schema.TSVArtifact, schema.MetadataArtifact):
+            cls.contents = property(_lazy_contents_getter, _lazy_contents_setter)
+
+        def _lazy_ds_descr_getter(self):
+            descr = self.get('dataset_description')
+            if descr is None:
+                file = self.get_file('dataset_description.json')
+                if file:
+                    json_obj = file.contents
+                    if json_obj:
+                        typ = self.get_schema().DatasetDescriptionFile
+                        descr = _map_object(self.get_schema(), typ, json_obj)
+                        descr.name = file.name
+                        descr.contents = json_obj
+                        descr.parent_object_ = self
+                        self['dataset_description'] = descr
+            return descr
+
+        def _lazy_ds_descr_setter(self, value):
+            self['dataset_description'] = value
+
+        def _lazy_deriv_descr_getter(self):
+            descr = self.get('dataset_description')
+            if descr is None:
+                file = self.get_file('dataset_description.json')
+                if file:
+                    json_obj = file.contents
+                    if json_obj:
+                        typ = self.get_schema().DerivativeDatasetDescriptionFile
+                        descr = _map_object(self.get_schema(), typ, json_obj)
+                        descr.name = file.name
+                        descr.contents = json_obj
+                        descr.parent_object_ = self
+                        self['dataset_description'] = descr
+            return descr
+
+        schema.Dataset.dataset_description = property(
+            _lazy_ds_descr_getter, _lazy_ds_descr_setter
+        )
+
+        schema.DerivativeFolder.dataset_description = property(
+            _lazy_deriv_descr_getter, _lazy_ds_descr_setter
+        )
 
         schema.get_model_classes = lambda: get_model_classes(schema)
         schema.get_members = lambda element_type, include_superclass=True: get_members(schema, element_type,
