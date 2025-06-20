@@ -6,7 +6,7 @@ from typing import List, Union, Dict
 import ancpbids
 from ancpbids import ValidationPlugin
 from . import load_dataset
-from .query import query, query_entities
+from . import query as query_module
 from .utils import resolve_segments, convert_to_relative
 
 class BIDSLayout:
@@ -120,9 +120,9 @@ class BIDSLayout:
             or Artifact objects for further processing by the caller
         """
         folder = self.dataset
-        return query(folder, return_type, target, scope, extension, suffix, **entities)
+        return query_module.query(folder, return_type, target, scope, extension, suffix, **entities)
 
-    def get_entities(self, scope: str = None, sort: bool = False) -> dict:
+    def get_entities(self, scope: str = query_module._UNSET, sort: bool = False) -> dict:
         """Returns a unique set of entities found within the dataset as a dict.
         Each key of the resulting dict contains a list of values (with at least one element).
 
@@ -146,7 +146,7 @@ class BIDSLayout:
         dict
             a unique set of entities found within the dataset as a dict
         """
-        return query_entities(self.dataset, scope, sort)
+        return query_module.query_entities(self.dataset, scope, sort)
 
     def get_dataset_description(self, scope='self', all_=False) -> Union[List[Dict], Dict]:
         """Return contents of dataset_description.json.

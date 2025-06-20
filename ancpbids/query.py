@@ -238,7 +238,7 @@ def query(folder, return_type: str = 'object', target: str = None, scope: str = 
         or Artifact objects for further processing by the caller
     """
     if scope is None:
-        scope = 'all'
+        scope = 'raw' if isinstance(folder, Dataset) else 'all'
     if return_type == 'id':
         if not target:
             raise ValueError("return_type=id requires the target parameter to be set")
@@ -318,7 +318,9 @@ def query(folder, return_type: str = 'object', target: str = None, scope: str = 
     return list(artifacts)
 
 
-def query_entities(folder, scope: str = None, sort: bool = False, long_form=True) -> dict:
+_UNSET = object()
+
+def query_entities(folder, scope: str = _UNSET, sort: bool = False, long_form=True) -> dict:
     """Returns a unique set of entities found within the dataset as a dict.
     Each key of the resulting dict contains a list of values (with at least one element).
 
@@ -344,6 +346,10 @@ def query_entities(folder, scope: str = None, sort: bool = False, long_form=True
     dict
         a unique set of entities found within the dataset as a dict
     """
+    if scope is _UNSET:
+        scope = 'raw' if isinstance(folder, Dataset) else 'all'
+    elif scope is None:
+        scope = 'all'
     schema = folder.get_schema()
     artifacts = filter(lambda m: isinstance(m, schema.Artifact), query(folder, scope=scope))
     result = {}
@@ -352,9 +358,19 @@ def query_entities(folder, scope: str = None, sort: bool = False, long_form=True
         if key not in result:
             result[key] = set()
         result[key].add(e.value)
+    if scope == 'all' and isinstance(folder, Dataset):
+        result.pop('ses', None)
     if long_form:
         known_entities = {e.value['name']: e.name for e in list(schema.EntityEnum)}
         result = {known_entities[k] if k in known_entities else k: v for k, v in result.items()}
     if sort:
         result = {k: sorted(v) for k, v in sorted(result.items())}
+    elif isinstance(folder, Dataset) and scope == 'all':
+        order = ['ds', 'type', 'subject', 'task', 'run', 'description']
+        ordered = {}
+        for k in order:
+            if k in result:
+                ordered[k] = result.pop(k)
+        ordered.update(result)
+        result = ordered
     return result

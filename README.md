@@ -11,3 +11,7 @@ Its implementation is based on the BIDS schema and allows it to evolve with the 
 Using a plugin mechanism, contributors can extend its functionality in a controlled and clean manner.
 
 Read more on [readthedocs.io](https://ancpbids.readthedocs.io)
+
+Since v0.5, JSON and TSV file contents are loaded lazily and cached only via weak
+references. This means memory is automatically freed once those objects are no
+longer referenced in your code.
