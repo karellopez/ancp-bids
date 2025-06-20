@@ -13,12 +13,15 @@ def read_yaml(file_path: str, **kwargs):
 
 
 def read_json(file_path: str, **kwargs):
-    # we cannot use yaml to load json if it contains any TABs for indentation
+    """Reads a JSON file.  Large files are accessed via ``mmap`` to reduce
+    memory overhead."""
     import json
-    with open(file_path, 'r') as stream:
+    import mmap
+    with open(file_path, "r") as stream:
         try:
-            return json.load(stream)
-        except:
+            with mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                return json.loads(mm.read().decode())
+        except Exception:
             return None
 
 
