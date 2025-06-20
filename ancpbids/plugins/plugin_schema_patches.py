@@ -145,9 +145,10 @@ def create_dataset(schema, base_dir=None, **kwargs):
     ds._versioned_schema = schema
     ds.base_dir_ = base_dir
     ds.update(**kwargs)
-    ds.dataset_description = DatasetDescriptionFile(name="dataset_description.json")
-    ds.dataset_description.BIDSVersion = schema.VERSION
-    ds.dataset_description.parent_object_ = ds
+    descr = DatasetDescriptionFile(name="dataset_description.json")
+    descr.BIDSVersion = schema.VERSION
+    descr.parent_object_ = ds
+    ds.dataset_description = descr
     return ds
 
 
@@ -391,17 +392,37 @@ class PatchingSchemaPlugin(SchemaPlugin):
         schema.Model.to_dict = to_dict
         schema.Model.iterancestors = iterancestors
 
+        import weakref
+
+        class _RefableList(list):
+            __slots__ = ('__weakref__',)
+
+        class _RefableDict(dict):
+            __slots__ = ('__weakref__',)
+
         def _lazy_contents_getter(self):
             contents = self.get('contents')
+            if contents is None:
+                ref = getattr(self, '_contents_ref', None)
+                contents = ref() if ref else None
             if contents is None:
                 try:
                     contents = self.load_contents()
                 except Exception:
                     contents = None
-                self['contents'] = contents
+                if isinstance(contents, list) and not isinstance(contents, _RefableList):
+                    contents = _RefableList(contents)
+                elif isinstance(contents, dict) and not isinstance(contents, _RefableDict):
+                    contents = _RefableDict(contents)
+                self._contents_ref = weakref.ref(contents) if contents is not None else None
             return contents
 
         def _lazy_contents_setter(self, value):
+            if isinstance(value, list) and not isinstance(value, _RefableList):
+                value = _RefableList(value)
+            elif isinstance(value, dict) and not isinstance(value, _RefableDict):
+                value = _RefableDict(value)
+            self._contents_ref = weakref.ref(value) if value is not None else None
             self['contents'] = value
 
         for cls in (schema.JsonFile, schema.MetadataFile,
@@ -410,6 +431,9 @@ class PatchingSchemaPlugin(SchemaPlugin):
 
         def _lazy_ds_descr_getter(self):
             descr = self.get('dataset_description')
+            if descr is None:
+                ref = getattr(self, '_ds_descr_ref', None)
+                descr = ref() if ref else None
             if descr is None:
                 file = self.get_file('dataset_description.json')
                 if file:
@@ -420,14 +444,22 @@ class PatchingSchemaPlugin(SchemaPlugin):
                         descr.name = file.name
                         descr.contents = json_obj
                         descr.parent_object_ = self
-                        self['dataset_description'] = descr
+                        self._ds_descr_ref = weakref.ref(descr)
             return descr
 
         def _lazy_ds_descr_setter(self, value):
-            self['dataset_description'] = value
+            if value is not None:
+                self['dataset_description'] = value
+                self._ds_descr_ref = weakref.ref(value)
+            else:
+                self['dataset_description'] = None
+                self._ds_descr_ref = None
 
         def _lazy_deriv_descr_getter(self):
             descr = self.get('dataset_description')
+            if descr is None:
+                ref = getattr(self, '_ds_descr_ref', None)
+                descr = ref() if ref else None
             if descr is None:
                 file = self.get_file('dataset_description.json')
                 if file:
@@ -438,7 +470,7 @@ class PatchingSchemaPlugin(SchemaPlugin):
                         descr.name = file.name
                         descr.contents = json_obj
                         descr.parent_object_ = self
-                        self['dataset_description'] = descr
+                        self._ds_descr_ref = weakref.ref(descr)
             return descr
 
         schema.Dataset.dataset_description = property(

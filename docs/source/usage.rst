@@ -17,6 +17,9 @@ as subsequent dataset operations can be executed on the in-memory structure.
 Keep in mind that any file system structural changes are not observed,
 i.e. if you added new files to your dataset after loading it, you have to reload it or start over your script.
 
+JSON and TSV files are loaded lazily. Their contents are cached via weak
+references and automatically cleared from memory once no reference is held.
+
 Validate a BIDS dataset
 -----------------------------
 Before processing a BIDS dataset, it is recommended to make sure it has no parts that do not conform to the BIDS specification.
